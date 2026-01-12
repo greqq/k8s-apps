@@ -38,7 +38,7 @@ spec:
       # ============================================================
       containers:
       - name: backend
-        image: fullstack-app-backend:latest
+        image: ghcr.io/greqq/k8s-apps/backend:b95fa36
         imagePullPolicy: Never
         ports:
         - containerPort: 3000

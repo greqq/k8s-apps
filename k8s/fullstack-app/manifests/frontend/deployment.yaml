@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: fullstack-app-frontend:latest
+        image: ghcr.io/greqq/k8s-apps/frontend:b95fa36
         imagePullPolicy: Never
         ports:
         - containerPort: 80
