@@ -18,7 +18,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/greqq/k8s-apps/frontend:latest
+        image: ghcr.io/greqq/k8s-apps/frontend:42f4eae
         imagePullPolicy: Always
         ports:
         - containerPort: 80
