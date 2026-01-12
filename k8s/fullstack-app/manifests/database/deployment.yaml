@@ -1,0 +1,80 @@
+# ============================================================
+# STATEFULSET: PostgreSQL Database
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres-service
+  
+  replicas: 1  # Single database instance (can scale for read replicas)
+  
+  selector:
+    matchLabels:
+      app: postgres
+  
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        
+        ports:
+        - name: postgres
+          containerPort: 5432
+          protocol: TCP
+        
+        envFrom:
+        - configMapRef:
+            name: postgres-config   # ← DB_NAME, DB_USER, PGDATA
+        - secretRef:
+            name: postgres-secret   # ← DB_PASSWORD
+        
+        resources:
+          requests:
+            memory: "256Mi"  # Minimum guaranteed
+            cpu: "250m"      # 0.25 CPU cores
+          limits:
+            memory: "512Mi"  # Maximum allowed (OOMKilled if exceeded)
+            cpu: "500m"      # 0.5 CPU cores
+        
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 30  # Wait 30s after startup
+          periodSeconds: 10        # Check every 10s
+          timeoutSeconds: 5        # Fail if takes >5s
+          failureThreshold: 3      # Restart after 3 failures
+        
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U postgres
+          initialDelaySeconds: 5   # Start checking after 5s
+          periodSeconds: 5         # Check every 5s
+          timeoutSeconds: 3        # Fail if takes >3s
+          failureThreshold: 3      # Mark unready after 3 failures
+        
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+  
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]  # One pod writes at a time
+      resources:
+        requests:
+          storage: 1Gi  # 1GB per pod

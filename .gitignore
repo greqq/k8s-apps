@@ -1,0 +1,20 @@
+# Node modules
+**/node_modules/
+
+# Test coverage
+**/coverage/
+**/.nyc_output/
+**/coverage-final.json
+
+# Secrets (plaintext)
+**/secret.yaml
+
+# IDE
+.vscode/
+
+# OS files
+.DS_Store
+
+# Local files not needed in repo
+minikube-linux-amd64
+*.log
