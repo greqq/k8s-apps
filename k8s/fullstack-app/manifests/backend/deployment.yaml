@@ -40,7 +40,7 @@ spec:
       # ============================================================
       containers:
       - name: backend
-        image: ghcr.io/greqq/k8s-apps/backend:42f4eae
+        image: ghcr.io/greqq/k8s-apps/backend:31fc4a9
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
