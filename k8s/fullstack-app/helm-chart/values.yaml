@@ -1,0 +1,116 @@
+global:
+  environment: development
+
+imagePullSecrets:
+  - ghcr-secret
+
+# Backend Configuration
+backend:
+  replicas: 2
+  
+  image:
+    repository: ghcr.io/greqq/k8s-apps/backend
+    tag: latest
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 3000
+  
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"  # 128 megabytes
+    limits:
+      # Maximum allowed resources (throttled/killed if exceeded)
+      cpu: "500m"      # 0.5 CPU cores
+      memory: "256Mi"  # 256 megabytes
+  
+  healthCheck:
+    # HTTP endpoint for health checks
+    path: /api/health
+    
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 3
+    
+    liveness:
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      failureThreshold: 3
+    
+    startup:
+      initialDelaySeconds: 0
+      periodSeconds: 2
+      failureThreshold: 30
+
+# Frontend Configuration
+frontend:
+  replicas: 2
+  
+  image:
+    repository: ghcr.io/greqq/k8s-apps/frontend
+    tag: v2
+    pullPolicy: Always
+  
+  service:
+    type: LoadBalancer
+    port: 80
+  
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "100m"
+      memory: "128Mi"
+
+# Database Configuration
+database:
+  type: postgresql
+  replicas: 1
+  
+  image:
+    repository: postgres
+    tag: "15-alpine"
+  
+  service:
+    type: ClusterIP
+    port: 5432
+  
+  auth:
+    username: postgres
+    password: mypassword
+  
+  name: newDB
+  
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  
+  healthCheck:
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+# Init container for database health checks
+initContainer:
+  image: busybox:1.36

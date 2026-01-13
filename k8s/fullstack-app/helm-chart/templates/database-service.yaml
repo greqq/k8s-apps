@@ -1,0 +1,17 @@
+# Headless service (clusterIP: None) required for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    app: {{ .Release.Name }}-postgres
+spec:
+  selector:
+    app: {{ .Release.Name }}-postgres
+  ports:
+  - protocol: TCP
+    port: {{ .Values.database.service.port }}
+    targetPort: {{ .Values.database.service.port }}
+  type: {{ .Values.database.service.type }}
+  # For StatefulSet, often use:
+  # clusterIP: None  # Makes it a "headless" service

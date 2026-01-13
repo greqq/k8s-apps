@@ -1,0 +1,83 @@
+# StatefulSet provides stable network identity and persistent storage for database
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    app: {{ .Release.Name }}-postgres
+spec:
+  serviceName: {{ .Release.Name }}-postgres
+  replicas: {{ .Values.database.replicas }}
+  
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-postgres
+  
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: {{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}
+        
+        ports:
+        - name: postgres
+          containerPort: {{ .Values.database.service.port }}
+          protocol: TCP
+        
+        envFrom:
+        - configMapRef:
+            name: {{ .Release.Name }}-postgres-config
+        - secretRef:
+            name: {{ .Release.Name }}-postgres-secret
+        
+        resources:
+          requests:
+            memory: {{ .Values.database.resources.requests.memory }}
+            cpu: {{ .Values.database.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.database.resources.limits.memory }}
+            cpu: {{ .Values.database.resources.limits.cpu }}
+        
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.auth.username }}
+          initialDelaySeconds: {{ .Values.database.healthCheck.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.database.healthCheck.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.database.healthCheck.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.database.healthCheck.liveness.failureThreshold }}
+        
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U {{ .Values.database.auth.username }}
+          initialDelaySeconds: {{ .Values.database.healthCheck.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.database.healthCheck.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.database.healthCheck.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.database.healthCheck.readiness.failureThreshold }}
+        
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+  
+  # VOLUMECLAIMTEMPLATES:
+  # This is what makes StatefulSet special!
+  # Each pod gets its own PersistentVolumeClaim
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      {{- if .Values.database.persistence.storageClass }}
+      storageClassName: {{ .Values.database.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.database.persistence.size }}

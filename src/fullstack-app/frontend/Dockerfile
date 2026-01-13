@@ -19,8 +19,17 @@ RUN npm run build
 # ============================================
 FROM nginx:alpine AS production
 
+# Copy built React app
 COPY --from=builder /app/build /usr/share/nginx/html
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx config as TEMPLATE (will be substituted at runtime)
+COPY nginx.conf /etc/nginx/conf.d/default.conf.template
+
+# Copy entrypoint script with a unique name
+COPY docker-entrypoint.sh /usr/local/bin/custom-entrypoint.sh
+RUN chmod +x /usr/local/bin/custom-entrypoint.sh
 
 EXPOSE 80
+
+# Use our custom entrypoint
+ENTRYPOINT ["/usr/local/bin/custom-entrypoint.sh"]

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels:
+    app: {{ .Release.Name }}-backend
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-backend
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-backend
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- range .Values.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
+      {{- end }}
+      
+      initContainers:
+      - name: wait-for-postgres
+        image: {{ .Values.initContainer.image }}
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until nc -z {{ .Release.Name }}-postgres 5432; do
+            echo "PostgreSQL is not ready yet. Retrying in 2 seconds..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready! Starting backend..."
+      
+      containers:
+      - name: backend
+        # TEMPLATED: Repository and tag separate for easy CI/CD updates
+        image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.backend.service.port }}
+
+        resources:
+          # TEMPLATED: Different resources for dev/staging/prod
+          requests:
+            cpu: {{ .Values.backend.resources.requests.cpu }}
+            memory: {{ .Values.backend.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.backend.resources.limits.cpu }}
+            memory: {{ .Values.backend.resources.limits.memory }}
+
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.backend.healthCheck.path }}
+            port: {{ .Values.backend.service.port }}
+          initialDelaySeconds: {{ .Values.backend.healthCheck.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.backend.healthCheck.readiness.periodSeconds }}
+          failureThreshold: {{ .Values.backend.healthCheck.readiness.failureThreshold }}
+        
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.backend.healthCheck.path }}
+            port: {{ .Values.backend.service.port }}
+          initialDelaySeconds: {{ .Values.backend.healthCheck.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.backend.healthCheck.liveness.periodSeconds }}
+          failureThreshold: {{ .Values.backend.healthCheck.liveness.failureThreshold }}
+        
+        startupProbe:
+          httpGet:
+            path: {{ .Values.backend.healthCheck.path }}
+            port: {{ .Values.backend.service.port }}
+          initialDelaySeconds: {{ .Values.backend.healthCheck.startup.initialDelaySeconds }}
+          periodSeconds: {{ .Values.backend.healthCheck.startup.periodSeconds }}
+          failureThreshold: {{ .Values.backend.healthCheck.startup.failureThreshold }}
+        
+        envFrom:
+        - configMapRef:
+            name: {{ .Release.Name }}-backend-config
+        - secretRef:
+            name: {{ .Release.Name }}-backend-secret
